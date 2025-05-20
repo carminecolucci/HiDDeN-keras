@@ -1,12 +1,11 @@
 from const import *
 import tensorflow as tf
-from tensorflow.keras.layers import Activation, Dense, BatchNormalization,\
+from keras.layers import Activation, Dense, BatchNormalization,\
     Conv2D, Input, GaussianNoise, GlobalAveragePooling2D, Dropout
-from tensorflow.keras.models import Model
+from keras.models import Model
 from loss import *
 from utils import *
 import numpy as np
-
 
 class HIDDEN():
     # This is the class of the entire network
