@@ -174,28 +174,30 @@ class HIDDEN():
     # Train on batch the entire network
     def train(self, epochs, train_images, train_messages):
         for epoch in range(epochs + 1):
-            batch = next(iter(train_images.take(BATCH_SIZE)))
-            batch_size = len(batch)
-            index = np.random.randint(0, len(train_images), batch_size)
-            real = np.ones((batch_size, 1))
-            fake = np.zeros((batch_size, 1))
-            batch_messages = train_messages[index]
-            cover_images = batch
-            encoded_images = self.encoder_model.predict(
-                [batch, batch_messages])
-            # Train the adversary
-            loss_real = self.discriminator_model.train_on_batch(
-                cover_images, real)
-            loss_fake = self.discriminator_model.train_on_batch(
-                encoded_images, fake)
-            #  Train all the network
-            autoencoder_loss = self.network.train_on_batch(
-                [batch, batch_messages], [batch, batch_messages, real])
-            print(
-                f"Epoch {epoch} Autoencoder loss: {autoencoder_loss[0]}\
-                    Image loss: {autoencoder_loss[1]}\
-                        Message loss: {autoencoder_loss[2]},\
-                            Adversary loss: {autoencoder_loss[3]}")
+            for i in range(len(train_images)):
+                print(f"Epoch {epoch + 1}/{epochs}, Batch {i + 1}/{len(train_images)}")
+                batch = next(iter(train_images.take(BATCH_SIZE)))
+                batch_size = len(batch)
+                index = np.random.randint(0, len(train_images), batch_size)
+                real = np.ones((batch_size, 1))
+                fake = np.zeros((batch_size, 1))
+                batch_messages = train_messages[index]
+                cover_images = batch
+                encoded_images = self.encoder_model.predict(
+                    [batch, batch_messages])
+                # Train the adversary
+                loss_real = self.discriminator_model.train_on_batch(
+                    cover_images, real)
+                loss_fake = self.discriminator_model.train_on_batch(
+                    encoded_images, fake)
+                #  Train all the network
+                autoencoder_loss = self.network.train_on_batch(
+                    [batch, batch_messages], [batch, batch_messages, real])
+                print(
+                    f"Autoencoder loss: {autoencoder_loss[0]}\
+                        Image loss: {autoencoder_loss[1]}\
+                            Message loss: {autoencoder_loss[2]},\
+                                Adversary loss: {autoencoder_loss[3]}")
 
     # Predict on batch
     def predict(self, prediction_images, prediction_messages, plain_msg, index):
@@ -204,12 +206,10 @@ class HIDDEN():
         decoded_msg = []
         x = prediction_images
         for i in range(len(x)):
-            batch, _ = next(x)
+            batch = next(iter(x))
             batch_size = len(batch)
-            pred_messages = prediction_messages[i *
-                                                batch_size:i*batch_size + batch_size]
-            (imgs, msgs, _) = self.network.predict_on_batch(
-                [batch, pred_messages])
+            pred_messages = prediction_messages[i * batch_size:i*batch_size + batch_size]
+            (imgs, msgs, _) = self.network.predict_on_batch([batch, pred_messages])
             for img in imgs:
                 decoded_img.append(img)
             for msg in msgs:

@@ -30,9 +30,10 @@ if __name__ == "__main__":
         err = count_errors(tpm, rpm)
         errors.append(err)
         i += 1
-    print(f'{sum(errors)/1000}/{network.message_length}')
-    plt.axis('off')
-    plt.imshow(np.squeeze(network.decoded_img[3]))
-    plt.show()
-    plt.imshow(np.squeeze(test_generator[0][0][3]))
-    plt.show()
+    print(f'{sum(errors)/SIZE_TEST}/{network.message_length}')
+    # TODO: fix image visualization
+    # plt.axis('off')
+    # plt.imshow(np.squeeze(network.decoded_img[3]))
+    # plt.show()
+    # plt.imshow(np.squeeze(test_generator[0][0][3]))
+    # plt.show()
