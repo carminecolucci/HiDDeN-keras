@@ -174,9 +174,10 @@ class HIDDEN():
     # Train on batch the entire network
     def train(self, epochs, train_images, train_messages):
         for epoch in range(epochs + 1):
-            for i in range(len(train_images)):
-                print(f"Epoch {epoch + 1}/{epochs}, Batch {i + 1}/{len(train_images)}")
-                batch = next(iter(train_images.take(BATCH_SIZE)))
+            #train_iterator = iter(train_images)
+            for i, batch in enumerate(train_images):
+                print(f"Epoch {epoch + 1}/{epochs}, Batch {i}/{len(train_images)}")
+
                 batch_size = len(batch)
                 index = np.random.randint(0, len(train_images), batch_size)
                 real = np.ones((batch_size, 1))
