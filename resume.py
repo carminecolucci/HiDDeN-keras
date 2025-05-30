@@ -5,7 +5,6 @@ from utils import *
 from aae import *
 from data_loader import load_data
 
-
 def predict(network, prediction_images, prediction_messages):
     print("Starting Prediction")
     decoded_img = []
@@ -25,7 +24,7 @@ def predict(network, prediction_images, prediction_messages):
     for i in range(len(decoded_msg)):
         decoded_msg[i] = round_message_to_string(decoded_msg[i])
         original_msg[i] = round_message_to_string(original_msg[i])
-    print(f"Accuracy: {np.sum(original_msg == decoded_msg)}/{len(decoded_msg)}")
+    print(f"Accuracy: {np.sum(np.array(original_msg) == np.array(decoded_msg))}/{len(decoded_msg)}")
     return decoded_img, decoded_msg
 
 
