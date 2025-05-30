@@ -20,13 +20,14 @@ if __name__ == "__main__":
 
     # Train the network
     network.train(epochs, train_generator, messages)
+    network.save("HiDDeN_COCO2017_10k.keras")
     (plain_test_messages, test_messages) = generate_random_messages(SIZE_TEST)
     network.predict(test_generator, test_messages, plain_test_messages, 1)
     errors = []
     i = 0
     for msg in network.decoded_msg:
-        rpm = round_predicted_message(msg)
-        tpm = round_predicted_message(test_messages[i])
+        rpm = round_message_to_string(msg)
+        tpm = round_message_to_string(test_messages[i])
         err = count_errors(tpm, rpm)
         errors.append(err)
         i += 1

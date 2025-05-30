@@ -5,8 +5,8 @@ from const import *
 def load_data():
     # Get and process the COCO dataset
     datadir = 'dataset'
-    trainingset = datadir + '/train2017/'
-    testset = datadir + '/test2017/'
+    trainingset = datadir + '/train/'
+    testset = datadir + '/test/'
 
     normalization_layer = Rescaling(1.0 / 255)
 

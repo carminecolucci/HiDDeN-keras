@@ -1,5 +1,5 @@
 import keras
-from keras.layers import Activation, Dense, BatchNormalization,\
+from keras.layers import Layer, Activation, Dense, BatchNormalization,\
     Conv2D, Input, GaussianNoise, GlobalAveragePooling2D, Dropout, Identity
 from keras.models import Model
 from loss import *
@@ -7,18 +7,40 @@ from utils import *
 from const import *
 import numpy as np
 
+@keras.saving.register_keras_serializable(package="HiDDeN")
+class KWrapperLayer(Layer):
+
+    def __init__(self, layer, **kwargs):
+            super().__init__(**kwargs)
+            self.layer = layer
+
+    def call(self, x, **kwargs):
+        return self.layer(x, **kwargs)
+
+    def get_config(self):
+        base_config = super().get_config()
+        config = {
+            "layer": keras.saving.serialize_keras_object(self.layer),
+        }
+        return {**base_config, **config}
+
+
+@keras.saving.register_keras_serializable(package="HiDDeN")
 class KExpandDims(keras.Layer):
     def call(self, x, axis):
-        return tf.expand_dims(x, axis)
+        return tf.expand_dims(x, axis=axis)
 
+@keras.saving.register_keras_serializable(package="HiDDeN")
 class KConvertToTensor(keras.Layer):
     def call(self, x, dtype):
         return tf.convert_to_tensor(x, dtype=dtype)
 
+@keras.saving.register_keras_serializable(package="HiDDeN")
 class KTile(keras.Layer):
     def call(self, x, multiples):
         return tf.tile(x, multiples=multiples)
 
+@keras.saving.register_keras_serializable(package="HiDDeN")
 class KConcat(keras.Layer):
     def call(self, x, axis):
         return tf.concat(x, axis=axis)
@@ -57,6 +79,7 @@ class HIDDEN():
             x = Activation("relu")(x)
 
         # Phase 2
+        # expanded_message = KWrapperLayer(keras.ops.expand_dims)(input_messages, axis=1)
         expanded_message = KExpandDims()(input_messages, axis=1)
         expanded_message = KExpandDims()(expanded_message, axis=1)
         a = tf.constant([1, self.H, self.W, 1], tf.int32)
@@ -150,9 +173,8 @@ class HIDDEN():
         self.discriminator_model.compile(
             loss=discriminator_loss, optimizer="adam")
         # We will only train the Encoder and the Decoder
-        # TODO: train also the discriminator
-        self.discriminator_model.trainable = False
-        print("Conecting models...")
+        self.discriminator_model.trainable = True
+        print("Connecting models...")
 
         images = Input(shape=self.image_shape, name='input')
         messages = Input(shape=(self.message_length,), name='messages')
@@ -162,7 +184,7 @@ class HIDDEN():
         discriminator_output = self.discriminator_model(encoder_output)
         # The final network: Encoder + Noise + Decoder + Adversary
         self.network = Model([images, messages], [
-                             noise_output, decoder_output, discriminator_output], name='hidden')
+                             noise_output, decoder_output, discriminator_output], name='HiDDeN_ESM_2025_group_5')
 
         # Compile all the network
         self.network.compile(loss=["mse", message_distortion_loss, adversary_loss],
@@ -173,10 +195,10 @@ class HIDDEN():
 
     # Train on batch the entire network
     def train(self, epochs, train_images, train_messages):
-        for epoch in range(epochs + 1):
+        for epoch in range(epochs):
             #train_iterator = iter(train_images)
             for i, batch in enumerate(train_images):
-                print(f"Epoch {epoch + 1}/{epochs}, Batch {i}/{len(train_images)}")
+                print(f"Epoch {epoch + 1}/{epochs}, Batch {i+1}/{len(train_images)}")
 
                 batch_size = len(batch)
                 index = np.random.randint(0, len(train_images), batch_size)
@@ -204,29 +226,27 @@ class HIDDEN():
     def predict(self, prediction_images, prediction_messages, plain_msg, index):
         print("Starting Prediction")
         decoded_img = []
+        original_msg = []
         decoded_msg = []
         x = prediction_images
-        for i in range(len(x)):
-            batch = next(iter(x))
+        for i, batch in enumerate(x):
+            print(f"Batch {i + 1}/{len(x)}")
+
             batch_size = len(batch)
-            pred_messages = prediction_messages[i * batch_size:i*batch_size + batch_size]
+            index = np.random.randint(0, len(x), batch_size)
+            pred_messages = prediction_messages[index]
             (imgs, msgs, _) = self.network.predict_on_batch([batch, pred_messages])
-            for img in imgs:
-                decoded_img.append(img)
-            for msg in msgs:
-                decoded_msg.append(msg)
+            decoded_img.extend(imgs)
+            original_msg.extend(pred_messages)
+            decoded_msg.extend(msgs)
 
         self.decoded_img = decoded_img
+        for i, message in enumerate(decoded_msg):
+            decoded_msg[i] = round_message_to_string(message)
         self.decoded_msg = decoded_msg
-
-        predicted_message = round_predicted_message(decoded_msg[index])
-        original_message = round_predicted_message(prediction_messages[index])
-        print("Original message as String: ", plain_msg[index])
-        print("Original message in Binary: ", original_message)
-        print("Predicted message in Binary: ", predicted_message)
-
-        errors = count_errors(original_message, predicted_message)
-        print(f'Errors {errors}/{self.message_length}')
+        original_msg_np = np.array(original_msg)
+        decoded_msg_np = np.array(decoded_msg)
+        print(f"Accuracy: {np.sum(original_msg_np == decoded_msg_np)}/{len(original_msg_np)}")
 
     def save(self, path):
         self.network.save(path)
