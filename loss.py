@@ -19,7 +19,7 @@ def message_distortion_loss(y_true, y_pred):
 # The adversarial loss L_g on the paper
 @keras.saving.register_keras_serializable(package="HiDDeN")
 def adversary_loss(y_true, y_pred):
-    return log10(y_pred + 1)
+    return log10(1 + y_pred)
 
 # The discriminator loss L_a on the paper
 @keras.saving.register_keras_serializable(package="HiDDeN")

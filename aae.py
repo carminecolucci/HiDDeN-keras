@@ -106,6 +106,7 @@ class HIDDEN():
         self.encoder_model = Model(
             [input_images, input_messages], encoded_images, name='encoder')
 
+    # TODO: noise layer wants as input also the cover image in case of "Crop" noise.
     def _build_noise_layer_model(self, name):
         # Function that applies the noise layer to the image
         print("Building Noise Layer...")
@@ -187,9 +188,9 @@ class HIDDEN():
                              noise_output, decoder_output, discriminator_output], name='HiDDeN_ESM_2025_group_5')
 
         # Compile all the network
-        self.network.compile(loss=["mse", message_distortion_loss, adversary_loss],
+        self.network.compile(loss=["mse", image_distortion_loss, adversary_loss],
                              # The relative weights of the losses, lambda_i and lambda_g
-                             loss_weights=[0.7, 1, 0.001],
+                             loss_weights=[1, 0.7, 0.001],
                              optimizer=optimizer)
         self.network.summary()
 
