@@ -39,7 +39,7 @@ def generate_random_messages(N):
 # Round every element to 0 or 1
 
 
-def round_predicted_message(predicted_message):
+def round_message_to_string(predicted_message):
     rounded_message = ''
     for num in predicted_message:
         if(float(num) > 0.5):
@@ -53,7 +53,7 @@ def round_predicted_message(predicted_message):
 
 
 def count_errors(original_message, predicted_message):
-    original_message = round_predicted_message(original_message)
+    original_message = round_message_to_string(original_message)
     count = 0
     for i in range(len(original_message)):
         if original_message[i] != predicted_message[i]:

@@ -1,11 +1,49 @@
-from const import *
-import tensorflow as tf
-from keras.layers import Activation, Dense, BatchNormalization,\
-    Conv2D, Input, GaussianNoise, GlobalAveragePooling2D, Dropout
+import keras
+from keras.layers import Layer, Activation, Dense, BatchNormalization,\
+    Conv2D, Input, GaussianNoise, GlobalAveragePooling2D, Dropout, Identity
 from keras.models import Model
 from loss import *
 from utils import *
+from const import *
 import numpy as np
+
+@keras.saving.register_keras_serializable(package="HiDDeN")
+class KWrapperLayer(Layer):
+
+    def __init__(self, layer, **kwargs):
+            super().__init__(**kwargs)
+            self.layer = layer
+
+    def call(self, x, **kwargs):
+        return self.layer(x, **kwargs)
+
+    def get_config(self):
+        base_config = super().get_config()
+        config = {
+            "layer": keras.saving.serialize_keras_object(self.layer),
+        }
+        return {**base_config, **config}
+
+
+@keras.saving.register_keras_serializable(package="HiDDeN")
+class KExpandDims(keras.Layer):
+    def call(self, x, axis):
+        return tf.expand_dims(x, axis=axis)
+
+@keras.saving.register_keras_serializable(package="HiDDeN")
+class KConvertToTensor(keras.Layer):
+    def call(self, x, dtype):
+        return tf.convert_to_tensor(x, dtype=dtype)
+
+@keras.saving.register_keras_serializable(package="HiDDeN")
+class KTile(keras.Layer):
+    def call(self, x, multiples):
+        return tf.tile(x, multiples=multiples)
+
+@keras.saving.register_keras_serializable(package="HiDDeN")
+class KConcat(keras.Layer):
+    def call(self, x, axis):
+        return tf.concat(x, axis=axis)
 
 class HIDDEN():
     # This is the class of the entire network
@@ -26,7 +64,7 @@ class HIDDEN():
         # Build the encoder
         print("Building Encoder...")
         input_images = Input(shape=self.image_shape, name='encoder_input')
-        input_messages = Input(shape=self.message_length,
+        input_messages = Input(shape=(self.message_length,),
                                name='input_messages')
         # Phase 1
         x = input_images
@@ -41,15 +79,15 @@ class HIDDEN():
             x = Activation("relu")(x)
 
         # Phase 2
-        expanded_message = tf.expand_dims(input_messages, axis=1)
-        expanded_message = tf.expand_dims(expanded_message, axis=1)
+        # expanded_message = KWrapperLayer(keras.ops.expand_dims)(input_messages, axis=1)
+        expanded_message = KExpandDims()(input_messages, axis=1)
+        expanded_message = KExpandDims()(expanded_message, axis=1)
         a = tf.constant([1, self.H, self.W, 1], tf.int32)
-        expanded_message = tf.convert_to_tensor(
-            expanded_message, dtype=tf.float32)
+        expanded_message = KConvertToTensor()(expanded_message, dtype=tf.float32)
         # Replicating the message H*W times
-        expanded_message = tf.tile(expanded_message, a)
+        expanded_message = KTile()(expanded_message, multiples=a)
         # Concatenate messages and images channel-wise
-        x2 = tf.concat([expanded_message, x, input_images], axis=-1)
+        x2 = KConcat()([expanded_message, x, input_images], axis=-1)
 
         # Phase 3
         # Latest Conv-BN-ReLU block with 64 output filters
@@ -73,14 +111,15 @@ class HIDDEN():
         print("Building Noise Layer...")
         input_images = Input(shape=self.image_shape, name='noise_input')
         if name == "identity":
+            x = Identity()(input_images)
             self.noise_layer_model = Model(
-                input_images, input_images, name='noise')
+                inputs=input_images, outputs=x, name='noise')
         elif name == "gaussian":
             x = GaussianNoise(2)(input_images)
-            self.noise_layer_model = Model(input_images, x, name='noise')
+            self.noise_layer_model = Model(inputs=input_images, outputs=x, name='noise')
         elif name == "dropout":
             x = Dropout(0.3)(input_images)
-            self.noise_layer_model = Model(input_images, x, name='noise')
+            self.noise_layer_model = Model(inputs=input_images, outputs=x, name='noise')
 
     def _build_decoder_model(self):
         # Build the decoder
@@ -134,80 +173,80 @@ class HIDDEN():
         self.discriminator_model.compile(
             loss=discriminator_loss, optimizer="adam")
         # We will only train the Encoder and the Decoder
-        self.discriminator_model.trainable = False
-        print("Conecting models...")
+        self.discriminator_model.trainable = True
+        print("Connecting models...")
 
         images = Input(shape=self.image_shape, name='input')
-        messages = Input(shape=self.message_length, name='messages')
+        messages = Input(shape=(self.message_length,), name='messages')
         encoder_output = self.encoder_model([images, messages])
         noise_output = self.noise_layer_model(encoder_output)
         decoder_output = self.decoder_model(noise_output)
         discriminator_output = self.discriminator_model(encoder_output)
         # The final network: Encoder + Noise + Decoder + Adversary
         self.network = Model([images, messages], [
-                             noise_output, decoder_output, discriminator_output], name='hidden')
+                             noise_output, decoder_output, discriminator_output], name='HiDDeN_ESM_2025_group_5')
 
         # Compile all the network
         self.network.compile(loss=["mse", message_distortion_loss, adversary_loss],
                              # The relative weights of the losses, lambda_i and lambda_g
                              loss_weights=[0.7, 1, 0.001],
                              optimizer=optimizer)
+        self.network.summary()
 
     # Train on batch the entire network
     def train(self, epochs, train_images, train_messages):
-        for epoch in range(epochs + 1):
-            batch, _ = next(train_images)
-            batch_size = len(batch)
-            index = np.random.randint(0, len(train_images), batch_size)
-            real = np.ones((batch_size, 1))
-            fake = np.zeros((batch_size, 1))
-            batch_messages = train_messages[index]
-            cover_images = batch
-            encoded_images = self.encoder_model.predict(
-                [batch, batch_messages])
-            # Train the adversary
-            loss_real = self.discriminator_model.train_on_batch(
-                cover_images, real)
-            loss_fake = self.discriminator_model.train_on_batch(
-                encoded_images, fake)
-            #  Train all the network
-            autoencoder_loss = self.network.train_on_batch(
-                [batch, batch_messages], [batch, batch_messages, real])
-            print(
-                f"Epoch {epoch} Autoencoder loss: {autoencoder_loss[0]}\
-                    Image loss: {autoencoder_loss[1]}\
-                        Message loss: {autoencoder_loss[2]},\
-                            Adversary loss: {autoencoder_loss[3]}")
+        for epoch in range(epochs):
+            #train_iterator = iter(train_images)
+            for i, batch in enumerate(train_images):
+                print(f"Epoch {epoch + 1}/{epochs}, Batch {i+1}/{len(train_images)}")
+
+                batch_size = len(batch)
+                index = np.random.randint(0, len(train_images), batch_size)
+                real = np.ones((batch_size, 1))
+                fake = np.zeros((batch_size, 1))
+                batch_messages = train_messages[index]
+                cover_images = batch
+                encoded_images = self.encoder_model.predict(
+                    [batch, batch_messages])
+                # Train the adversary
+                loss_real = self.discriminator_model.train_on_batch(
+                    cover_images, real)
+                loss_fake = self.discriminator_model.train_on_batch(
+                    encoded_images, fake)
+                #  Train all the network
+                autoencoder_loss = self.network.train_on_batch(
+                    [batch, batch_messages], [batch, batch_messages, real])
+                print(
+                    f"Autoencoder loss: {autoencoder_loss[0]}\
+                        Image loss: {autoencoder_loss[1]}\
+                            Message loss: {autoencoder_loss[2]},\
+                                Adversary loss: {autoencoder_loss[3]}")
 
     # Predict on batch
     def predict(self, prediction_images, prediction_messages, plain_msg, index):
         print("Starting Prediction")
         decoded_img = []
+        original_msg = []
         decoded_msg = []
         x = prediction_images
-        for i in range(len(x)):
-            batch, _ = next(x)
+        for i, batch in enumerate(x):
+            print(f"Batch {i + 1}/{len(x)}")
+
             batch_size = len(batch)
-            pred_messages = prediction_messages[i *
-                                                batch_size:i*batch_size + batch_size]
-            (imgs, msgs, _) = self.network.predict_on_batch(
-                [batch, pred_messages])
-            for img in imgs:
-                decoded_img.append(img)
-            for msg in msgs:
-                decoded_msg.append(msg)
+            index = np.random.randint(0, len(x), batch_size)
+            pred_messages = prediction_messages[index]
+            (imgs, msgs, _) = self.network.predict_on_batch([batch, pred_messages])
+            decoded_img.extend(imgs)
+            original_msg.extend(pred_messages)
+            decoded_msg.extend(msgs)
 
         self.decoded_img = decoded_img
+        for i, message in enumerate(decoded_msg):
+            decoded_msg[i] = round_message_to_string(message)
         self.decoded_msg = decoded_msg
-
-        predicted_message = round_predicted_message(decoded_msg[index])
-        original_message = round_predicted_message(prediction_messages[index])
-        print("Original message as String: ", plain_msg[index])
-        print("Original message in Binary: ", original_message)
-        print("Predicted message in Binary: ", predicted_message)
-
-        errors = count_errors(original_message, predicted_message)
-        print(f'Errors {errors}/{self.message_length}')
+        original_msg_np = np.array(original_msg)
+        decoded_msg_np = np.array(decoded_msg)
+        print(f"Accuracy: {np.sum(original_msg_np == decoded_msg_np)}/{len(original_msg_np)}")
 
     def save(self, path):
         self.network.save(path)
