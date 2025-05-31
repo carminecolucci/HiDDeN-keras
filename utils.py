@@ -62,7 +62,6 @@ def count_errors(original_message, predicted_message):
 
 # Log in base 10 using Tensorflow
 
-
 def log10(x):
     numerator = tf.math.log(x)
     denominator = tf.math.log(tf.constant(10, dtype=numerator.dtype))

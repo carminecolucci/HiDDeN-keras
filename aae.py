@@ -7,23 +7,6 @@ from utils import *
 from const import *
 import numpy as np
 
-@keras.saving.register_keras_serializable(package="HiDDeN")
-class KWrapperLayer(Layer):
-
-    def __init__(self, layer, **kwargs):
-            super().__init__(**kwargs)
-            self.layer = layer
-
-    def call(self, x, **kwargs):
-        return self.layer(x, **kwargs)
-
-    def get_config(self):
-        base_config = super().get_config()
-        config = {
-            "layer": keras.saving.serialize_keras_object(self.layer),
-        }
-        return {**base_config, **config}
-
 
 @keras.saving.register_keras_serializable(package="HiDDeN")
 class KExpandDims(keras.Layer):
