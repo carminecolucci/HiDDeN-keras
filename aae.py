@@ -8,6 +8,7 @@ from const import *
 import numpy as np
 
 
+
 @keras.saving.register_keras_serializable(package="HiDDeN")
 class KExpandDims(keras.Layer):
     def call(self, x, axis):
@@ -205,32 +206,6 @@ class HIDDEN():
                         Image loss: {autoencoder_loss[1]}\
                             Message loss: {autoencoder_loss[2]},\
                                 Adversary loss: {autoencoder_loss[3]}")
-
-    # Predict on batch
-    def predict(self, prediction_images, prediction_messages, plain_msg, index):
-        print("Starting Prediction")
-        decoded_img = []
-        original_msg = []
-        decoded_msg = []
-        x = prediction_images
-        for i, batch in enumerate(x):
-            print(f"Batch {i + 1}/{len(x)}")
-
-            batch_size = len(batch)
-            index = np.random.randint(0, len(x), batch_size)
-            pred_messages = prediction_messages[index]
-            (imgs, msgs, _) = self.network.predict_on_batch([batch, pred_messages])
-            decoded_img.extend(imgs)
-            original_msg.extend(pred_messages)
-            decoded_msg.extend(msgs)
-
-        self.decoded_img = decoded_img
-        for i, message in enumerate(decoded_msg):
-            decoded_msg[i] = round_message_to_string(message)
-        self.decoded_msg = decoded_msg
-        original_msg_np = np.array(original_msg)
-        decoded_msg_np = np.array(decoded_msg)
-        print(f"Accuracy: {np.sum(original_msg_np == decoded_msg_np)}/{len(original_msg_np)}")
 
     def save(self, path):
         self.network.save(path)

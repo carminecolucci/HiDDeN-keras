@@ -10,7 +10,7 @@ if __name__ == "__main__":
     (N, H, W, C) = (NUM_IMAGES,
                     input_shape[0], input_shape[1], input_shape[2])
     # Generate random messages as input of the encoder
-    (_, messages) = generate_random_messages(N)
+    messages = generate_random_messages(N)
     L = messages.shape[1]
     epochs = EPOCHS
     print(f'{N} images, {H} x {W} x {C}')
@@ -21,20 +21,4 @@ if __name__ == "__main__":
     # Train the network
     network.train(epochs, train_generator, messages)
     network.save("HiDDeN_COCO2017_10k.keras")
-    (plain_test_messages, test_messages) = generate_random_messages(SIZE_TEST)
-    network.predict(test_generator, test_messages, plain_test_messages, 1)
-    errors = []
-    i = 0
-    for msg in network.decoded_msg:
-        rpm = round_message_to_string(msg)
-        tpm = round_message_to_string(test_messages[i])
-        err = count_errors(tpm, rpm)
-        errors.append(err)
-        i += 1
-    print(f'{sum(errors)/SIZE_TEST}/{network.message_length}')
-    # TODO: fix image visualization
-    # plt.axis('off')
-    # plt.imshow(np.squeeze(network.decoded_img[3]))
-    # plt.show()
-    # plt.imshow(np.squeeze(test_generator[0][0][3]))
-    # plt.show()
+    

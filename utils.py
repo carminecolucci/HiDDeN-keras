@@ -3,42 +3,21 @@ import random
 from const import *
 import numpy as np
 import tensorflow as tf
-# Generate a random String with a fixed length using the passed alphabet
 
 
-def generate_random_text(alphabet, length):
-    return ''.join(random.choice(alphabet) for i in range(int(length)))
-
-# Convert a string to an UTF8 binary representation
-
-
-def string_to_binary(string):
-    binary_message = ' '.join('{:08b}'.format(b)
-                              for b in string.encode('utf8'))
-    return binary_message
+# Generate a random binary string with size n
+def generate_random_binary(n):
+    return [np.float32(random.randint(0, 1)) for _ in range(n)]
 
 # Generate a random array of binary messages
-
-
 def generate_random_messages(N):
     messages_binary = []
-    message_string = []
-    letters = string.ascii_lowercase
     for _ in range(N):
-        s = []
-        text = generate_random_text(letters, MESSAGE_LENGTH/8)
-        message_string.append(text)
-        binary_message = string_to_binary(text)
-        binary_message = binary_message.replace(" ", "")
-        for bit in binary_message:
-            s.append(float(bit))
-        s = np.asarray(s, dtype='float32')
-        messages_binary.append(s)
-    return (message_string, np.asarray(messages_binary, dtype='float32'))
+        binary_message = generate_random_binary(MESSAGE_LENGTH)
+        messages_binary.append(binary_message)
+    return np.asarray(messages_binary, dtype='float32')
 
 # Round every element to 0 or 1
-
-
 def round_message_to_string(predicted_message):
     rounded_message = ''
     for num in predicted_message:
@@ -50,8 +29,6 @@ def round_message_to_string(predicted_message):
 
 # Count bit error between the original binary message
 # and the predicted one
-
-
 def count_errors(original_message, predicted_message):
     original_message = round_message_to_string(original_message)
     count = 0
