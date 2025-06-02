@@ -143,7 +143,7 @@ class HIDDEN():
         decoder_output = self.decoder_model(noise_output)
         discriminator_output = self.discriminator_model(encoder_output)
         # The final network: Encoder + Noise + Decoder + Adversary
-        self.network = Model([images, messages], [noise_output, decoder_output, discriminator_output], name="HiDDeN_ESM_2025_group_5")
+        self.network = Model([images, messages], [encoder_output, decoder_output, discriminator_output], name="HiDDeN_ESM_2025_group_5")
 
         # Compile all the network
         # Encoder output -> MSE Loss * 0.7 (L_I)

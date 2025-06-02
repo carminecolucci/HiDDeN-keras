@@ -1,4 +1,4 @@
-from aae import HIDDEN
+from hidden import HIDDEN
 from const import NUM_IMAGES, EPOCHS
 from data_loader import load_data
 from utils import generate_random_messages
