@@ -1,10 +1,11 @@
-from keras.layers import Activation, Dense, BatchNormalization,\
-    Conv2D, Input, GaussianNoise, GlobalAveragePooling2D, Dropout, Identity
-from keras.models import Model
-from loss import *
-from utils import *
-from const import *
 import numpy as np
+import keras
+from keras.layers import Activation, Dense, BatchNormalization, \
+    Conv2D, Dropout, Identity, Input, GaussianNoise, GlobalAveragePooling2D
+from keras.models import Model
+import tensorflow as tf
+
+from const import KERNEL_SIZE
 
 
 @keras.saving.register_keras_serializable(package="HiDDeN")
@@ -45,13 +46,13 @@ class HIDDEN():
     def _build_encoder_model(self):
         # Build the encoder
         print("Building Encoder...")
-        input_images = Input(shape=self.image_shape, name='encoder_input')
-        input_messages = Input(shape=(self.message_length,), name='input_messages')
+        input_images = Input(shape=self.image_shape, name="encoder_input")
+        input_messages = Input(shape=(self.message_length,), name="input_messages")
         # Phase 1
         x = input_images
         # Applying 4 Conv-BN-ReLU blocks with 64 output filters
         for filters in [64, 64, 64, 64]:
-            x = Conv2D(filters=filters, kernel_size=KERNEL_SIZE, strides=1, padding='same', use_bias=False)(x)
+            x = Conv2D(filters=filters, kernel_size=KERNEL_SIZE, strides=1, padding="same", use_bias=False)(x)
             x = BatchNormalization(-1)(x)
             x = Activation("relu")(x)
 
@@ -67,45 +68,45 @@ class HIDDEN():
 
         # Phase 3
         # Latest Conv-BN-ReLU block with 64 output filters
-        encoded_images = Conv2D(64, kernel_size=KERNEL_SIZE, strides=1, padding='same', use_bias=False)(x2)
+        encoded_images = Conv2D(64, kernel_size=KERNEL_SIZE, strides=1, padding="same", use_bias=False)(x2)
         encoded_images = BatchNormalization(-1)(encoded_images)
         encoded_images = Activation("relu")(encoded_images)
 
         # Final Convolutonial Layer with 1 x 1 kernel and C output filters
-        encoded_images = Conv2D(self.C, 1, padding='same',
+        encoded_images = Conv2D(self.C, 1, padding="same",
                                 strides=1)(encoded_images)
 
         self.encoder_model = Model(
-            [input_images, input_messages], encoded_images, name='encoder')
+            [input_images, input_messages], encoded_images, name="encoder")
 
     # TODO: noise layer wants as input also the cover image in case of "Crop" noise.
     def _build_noise_layer_model(self, name):
         # Function that applies the noise layer to the image
         print("Building Noise Layer...")
-        input_images = Input(shape=self.image_shape, name='noise_input')
+        input_images = Input(shape=self.image_shape, name="noise_input")
         if name == "identity":
             x = Identity()(input_images)
-            self.noise_layer_model = Model(inputs=input_images, outputs=x, name='noise')
+            self.noise_layer_model = Model(inputs=input_images, outputs=x, name="noise")
         elif name == "gaussian":
             x = GaussianNoise(2)(input_images)
-            self.noise_layer_model = Model(inputs=input_images, outputs=x, name='noise')
+            self.noise_layer_model = Model(inputs=input_images, outputs=x, name="noise")
         elif name == "dropout":
             x = Dropout(0.3)(input_images)
-            self.noise_layer_model = Model(inputs=input_images, outputs=x, name='noise')
+            self.noise_layer_model = Model(inputs=input_images, outputs=x, name="noise")
 
     def _build_decoder_model(self):
         # Build the decoder
         print("Building Decoder Generator...")
-        input_images = Input(shape=self.image_shape, name='decoder_input')
+        input_images = Input(shape=self.image_shape, name="decoder_input")
         x = input_images
         # Applying 7 Conv-BN-ReLU blocks with 64 output filters
         for filters in [64, 64, 64, 64, 64, 64, 64]:
-            x = Conv2D(filters, kernel_size=KERNEL_SIZE, strides=1, padding='same', use_bias=False)(x)
+            x = Conv2D(filters, kernel_size=KERNEL_SIZE, strides=1, padding="same", use_bias=False)(x)
             x = BatchNormalization(axis=-1)(x)
             x = Activation("relu")(x)
 
         # Last ConvBNReLU with L filters
-        x = Conv2D(self.message_length, kernel_size=KERNEL_SIZE, padding='same', use_bias=False)(x)
+        x = Conv2D(self.message_length, kernel_size=KERNEL_SIZE, padding="same", use_bias=False)(x)
         x = BatchNormalization(axis=-1)(x)
         x = Activation("relu")(x)
 
@@ -113,36 +114,36 @@ class HIDDEN():
         x = GlobalAveragePooling2D()(x)
         # Final linear layer with L units
         x = Dense(self.message_length)(x)
-        self.decoder_model = Model(input_images, x, name='decoder')
+        self.decoder_model = Model(input_images, x, name="decoder")
 
     def _build_discriminator_model(self):
         # build the adversary
-        input_images = Input(shape=self.image_shape, name='adversary_input')
+        input_images = Input(shape=self.image_shape, name="adversary_input")
         x = input_images
         # Applying 3 Conv-BN-ReLU blocks with 64 output filters
         for filters in [64, 64, 64]:
-            x = Conv2D(filters, kernel_size=KERNEL_SIZE, strides=1, padding='same')(x)
+            x = Conv2D(filters, kernel_size=KERNEL_SIZE, strides=1, padding="same")(x)
             x = BatchNormalization(axis=-1)(x)
             x = Activation("relu")(x)
         # Average Pooling over all spatial dimensions
         x = GlobalAveragePooling2D()(x)
         # Final linear layer to classify the image
         adversary_output = Dense(1, activation="sigmoid")(x)
-        self.discriminator_model = Model(input_images, adversary_output, name='discriminator')
+        self.discriminator_model = Model(input_images, adversary_output, name="discriminator")
 
     def _build_and_compile_network(self, optimizer):
         self.discriminator_model.compile(
             loss=keras.losses.BinaryCrossentropy(), optimizer="adam")
         print("Connecting models...")
 
-        images = Input(shape=self.image_shape, name='input')
-        messages = Input(shape=(self.message_length,), name='messages')
+        images = Input(shape=self.image_shape, name="input")
+        messages = Input(shape=(self.message_length,), name="messages")
         encoder_output = self.encoder_model([images, messages])
         noise_output = self.noise_layer_model(encoder_output)
         decoder_output = self.decoder_model(noise_output)
         discriminator_output = self.discriminator_model(encoder_output)
         # The final network: Encoder + Noise + Decoder + Adversary
-        self.network = Model([images, messages], [noise_output, decoder_output, discriminator_output], name='HiDDeN_ESM_2025_group_5')
+        self.network = Model([images, messages], [noise_output, decoder_output, discriminator_output], name="HiDDeN_ESM_2025_group_5")
 
         # Compile all the network
         # Encoder output -> MSE Loss * 0.7 (L_I)
@@ -159,7 +160,7 @@ class HIDDEN():
     def train(self, epochs, train_images, train_messages):
         for epoch in range(epochs):
             for i, batch in enumerate(train_images):
-                print(f"Epoch {epoch + 1}/{epochs}, Batch {i+1}/{len(train_images)}")
+                print(f"Epoch {epoch + 1}/{epochs}, Batch {i + 1}/{len(train_images)}")
 
                 batch_size = len(batch)
                 index = np.random.randint(0, len(train_images), batch_size)

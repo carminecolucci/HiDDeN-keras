@@ -1,6 +1,7 @@
-import random
-from const import *
 import numpy as np
+import random
+
+from const import MESSAGE_LENGTH
 
 
 # Generate a random binary string with size n
@@ -13,16 +14,16 @@ def generate_random_messages(N):
     for _ in range(N):
         binary_message = generate_random_binary(MESSAGE_LENGTH)
         messages_binary.append(binary_message)
-    return np.asarray(messages_binary, dtype='float32')
+    return np.asarray(messages_binary, dtype="float32")
 
 # Round every element to 0 or 1
 def round_message_to_string(predicted_message):
-    rounded_message = ''
+    rounded_message = ""
     for num in predicted_message:
-        if(float(num) > 0.5):
-            rounded_message += '1'
+        if (float(num) > 0.5):
+            rounded_message += "1"
         else:
-            rounded_message += '0'
+            rounded_message += "0"
     return rounded_message
 
 # Count bit error between the original binary message

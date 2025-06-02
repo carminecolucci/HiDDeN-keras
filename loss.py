@@ -1,13 +1,14 @@
-import tensorflow as tf
 import keras
+import tensorflow as tf
+
 from const import *
 
-EPS = 1e-8 
+EPS = 1e-8
 
 # The image distortion loss L_i on the paper
 @keras.saving.register_keras_serializable(package="HiDDeN")
 def image_distortion_loss(y_true, y_pred):
-    return tf.norm(y_true - y_pred, ord=2, keepdims=True) / (CHANNEL*IMAGE_SIZE*IMAGE_SIZE)
+    return tf.norm(y_true - y_pred, ord=2, keepdims=True) / (CHANNEL * IMAGE_SIZE * IMAGE_SIZE)
 
 # The message distortion loss L_m on the paper
 @keras.saving.register_keras_serializable(package="HiDDeN")

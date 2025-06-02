@@ -1,14 +1,15 @@
-from tensorflow.image import rgb_to_yuv, yuv_to_rgb
-from keras.utils import image_dataset_from_directory
 from keras.layers import Rescaling
+from keras.utils import image_dataset_from_directory
+from tensorflow.image import rgb_to_yuv, yuv_to_rgb
+
 from const import *
 
 
 def load_data():
     # Get and process the COCO dataset
-    datadir = 'dataset'
-    trainingset = datadir + '/train/'
-    testset = datadir + '/test/'
+    datadir = "dataset"
+    trainingset = datadir + "/train/"
+    testset = datadir + "/test/"
 
     normalization_layer = Rescaling(1.0 / 255)
 
@@ -41,6 +42,6 @@ def load_data():
     input_shape = (IMAGE_SIZE, IMAGE_SIZE, 3)
 
     print(f"Image input {input_shape}, batch size {BATCH_SIZE}.")
-    print(f'Training set has {len(train_generator)} batches.')
-    print(f'Test set has {len(test_generator)} batches.')
-    return (train_generator, test_generator, input_shape)
+    print(f"Training set has {len(train_generator)} batches.")
+    print(f"Test set has {len(test_generator)} batches.")
+    return train_generator, test_generator, input_shape
