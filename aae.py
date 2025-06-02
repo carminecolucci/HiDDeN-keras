@@ -127,7 +127,7 @@ class HIDDEN():
         # Average Pooling over all spatial dimensions
         x = GlobalAveragePooling2D()(x)
         # Final linear layer to classify the image
-        adversary_output = Dense(2, activation="softmax")(x)
+        adversary_output = Dense(1, activation="sigmoid")(x)
         self.discriminator_model = Model(input_images, adversary_output, name='discriminator')
 
     def _build_and_compile_network(self, optimizer):
