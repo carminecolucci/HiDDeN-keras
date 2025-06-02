@@ -132,7 +132,7 @@ class HIDDEN():
 
     def _build_and_compile_network(self, optimizer):
         self.discriminator_model.compile(
-            loss=discriminator_loss, optimizer="adam")
+            loss=keras.losses.BinaryCrossentropy(), optimizer="adam")
         print("Connecting models...")
 
         images = Input(shape=self.image_shape, name='input')
@@ -145,7 +145,11 @@ class HIDDEN():
         self.network = Model([images, messages], [noise_output, decoder_output, discriminator_output], name='HiDDeN_ESM_2025_group_5')
 
         # Compile all the network
-        self.network.compile(loss=[image_distortion_loss, message_distortion_loss, adversary_loss],
+        # Encoder output -> MSE Loss * 0.7 (L_I)
+        # decoder_output -> MSE Loss * 1 (L_M)
+        # discriminator_output -> Adv_loss * 0.001 (L_G)
+        # The last loss (L_A) is defined in the discriminator model 
+        self.network.compile(loss=["mse", "mse", keras.losses.BinaryCrossentropy()],
                              # The relative weights of the losses, lambda_i and lambda_g
                              loss_weights=[0.7, 1, 0.001],
                              optimizer=optimizer)
