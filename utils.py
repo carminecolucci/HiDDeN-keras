@@ -1,8 +1,6 @@
-import string
 import random
 from const import *
 import numpy as np
-import tensorflow as tf
 
 
 # Generate a random binary string with size n
@@ -36,10 +34,3 @@ def count_errors(original_message, predicted_message):
         if original_message[i] != predicted_message[i]:
             count += 1
     return count
-
-# Log in base 10 using Tensorflow
-
-def log10(x):
-    numerator = tf.math.log(x)
-    denominator = tf.math.log(tf.constant(10, dtype=numerator.dtype))
-    return numerator / denominator

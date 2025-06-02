@@ -1,8 +1,7 @@
-from const import *
 from utils import *
 from aae import HIDDEN
-import matplotlib.pyplot as plt
 from data_loader import load_data
+
 
 if __name__ == "__main__":
     # Take some infos from the dataset
