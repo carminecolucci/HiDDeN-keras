@@ -6,6 +6,7 @@ from skimage.transform import resize
 import matplotlib.pyplot as plt
 
 from const import *
+from hidden import KConvertToTensor, KExpandDims, KTile, KConcat
 from data_loader import load_data
 from utils import count_errors, generate_random_messages, round_message_to_string
 
@@ -49,7 +50,6 @@ if __name__ == "__main__":
         i += 1
     print(f"{sum(errors) / SIZE_TEST}/{MESSAGE_LENGTH}")
 
-    H, W, C = 128, 128, 3
     test_messages = generate_random_messages(1)
     image = np.float32(io.imread("dataset/test/000000000809.jpg")) / 255
     image = resize(image, (H, W, C))
@@ -64,11 +64,12 @@ if __name__ == "__main__":
         image = yuv2rgb(image)
         decoded_img = yuv2rgb(decoded_img)
 
+    decoded_img = (decoded_img - decoded_img.min()) / (decoded_img.max() - decoded_img.min())
     plt.figure()
     plt.subplot(1, 2, 1); plt.imshow(image); plt.title("Input Image"); plt.colorbar()
     plt.subplot(1, 2, 2); plt.imshow(decoded_img); plt.title("Decoded Image"); plt.colorbar()
     plt.show()
-    diff_image = (decoded_img - image) * 50
+    diff_image = (decoded_img - image)
     diff_image = (diff_image - diff_image.min()) / (diff_image.max() - diff_image.min())
     plt.figure()
     plt.imshow(diff_image, clim=None); plt.title("Difference Image (FSHS)"); plt.colorbar()
