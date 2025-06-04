@@ -6,40 +6,18 @@ from skimage.transform import resize
 import matplotlib.pyplot as plt
 
 from const import *
-from hidden import KConvertToTensor, KExpandDims, KTile, KConcat
+from hidden import KConvertToTensor, KExpandDims, KTile, KConcat, HIDDEN
 from data_loader import load_data
 from utils import count_errors, generate_random_messages, round_message_to_string
 
-def predict(network, prediction_images, prediction_messages):
-    print("Starting Prediction")
-    decoded_img = []
-    original_msg = []
-    decoded_msg = []
-    x = prediction_images
-    for i, batch in enumerate(x):
-        print(f"Batch {i + 1}/{len(x)}")
-        batch_size = len(batch)
-        index = np.random.randint(0, len(x), batch_size)
-        pred_messages = prediction_messages[index]
-        imgs, msgs, _ = network.predict_on_batch([batch, pred_messages])
-        decoded_img.extend(imgs)
-        original_msg.extend(pred_messages)
-        decoded_msg.extend(msgs)
-
-    for i in range(len(decoded_msg)):
-        decoded_msg[i] = round_message_to_string(decoded_msg[i])
-        original_msg[i] = round_message_to_string(original_msg[i])
-    print(f"Accuracy: {np.sum(np.array(original_msg) == np.array(decoded_msg))}/{len(decoded_msg)}")
-    return decoded_img, decoded_msg
-
 
 if __name__ == "__main__":
-    network = keras.models.load_model("HiDDeN_COCO2017.keras")
-    network.summary()
     train_generator, test_generator, input_shape = load_data()
-    N, H, W, C = NUM_IMAGES, input_shape[0], input_shape[1], input_shape[2]
+    N, H, W, C = NUM_IMAGES, *input_shape
     test_messages = generate_random_messages(SIZE_TEST)
-    decoded_img, decoded_msg = predict(network, test_generator, test_messages)
+    L = test_messages.shape[1]
+    network = HIDDEN("HiDDeN_COCO2017.keras", H, W, C, L)
+    decoded_img, decoded_msg = network.predict(test_generator, test_messages)
     errors = []
     i = 0
     for msg in decoded_msg:
@@ -51,7 +29,7 @@ if __name__ == "__main__":
     print(f"{sum(errors) / SIZE_TEST}/{MESSAGE_LENGTH}")
 
     test_messages = generate_random_messages(1)
-    image = np.float32(io.imread("dataset/test/000000000809.jpg")) / 255
+    image = np.float32(io.imread("dataset/test/000000002934.jpg")) / 255
     image = resize(image, (H, W, C))
     if YUV:
         image = rgb2yuv(image)
