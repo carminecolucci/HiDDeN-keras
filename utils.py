@@ -1,8 +1,27 @@
 import numpy as np
 import random
+import tensorflow as tf
 
 from const import MESSAGE_LENGTH
 
+
+def rgb2yuv(image):
+    yuv = tf.image.rgb_to_yuv(image)
+    yuv_offset = tf.stack([
+        yuv[..., 0],
+        yuv[..., 1] + 0.5,
+        yuv[..., 2] + 0.5
+    ], axis=-1)
+    return yuv_offset
+
+def yuv2rgb(image):
+    yuv = tf.stack([
+        image[..., 0],
+        image[..., 1] - 0.5,
+        image[..., 2] - 0.5
+    ], axis=-1)
+    rgb = tf.image.yuv_to_rgb(yuv)
+    return rgb
 
 # Generate a random binary string with size n
 def generate_random_binary(n):

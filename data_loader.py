@@ -1,8 +1,8 @@
 from keras.layers import Rescaling
 from keras.utils import image_dataset_from_directory
-from tensorflow.image import rgb_to_yuv, yuv_to_rgb
 
 from const import *
+from utils import rgb2yuv
 
 
 def load_data():
@@ -24,7 +24,7 @@ def load_data():
     )
     train_generator = train_generator.map(lambda image: normalization_layer(image))
     if YUV:
-        train_generator = train_generator.map(lambda image: rgb_to_yuv(image))
+        train_generator = train_generator.map(lambda image: rgb2yuv(image))
 
     # Normalizing the test images to the range of [0., 1.]
     test_generator = image_dataset_from_directory(
@@ -37,7 +37,7 @@ def load_data():
     )
     test_generator = test_generator.map(lambda image: normalization_layer(image))
     if YUV:
-        test_generator = test_generator.map(lambda image: rgb_to_yuv(image))
+        test_generator = test_generator.map(lambda image: rgb2yuv(image))
 
     input_shape = (IMAGE_SIZE, IMAGE_SIZE, 3)
 
