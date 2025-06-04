@@ -5,8 +5,8 @@ import tensorflow as tf
 from const import MESSAGE_LENGTH
 
 
-def rgb2yuv(image):
-    yuv = tf.image.rgb_to_yuv(image)
+def rgb2yuv(images):
+    yuv = tf.image.rgb_to_yuv(images)
     yuv_offset = tf.stack([
         yuv[..., 0],
         yuv[..., 1] + 0.5,
@@ -14,11 +14,11 @@ def rgb2yuv(image):
     ], axis=-1)
     return yuv_offset
 
-def yuv2rgb(image):
+def yuv2rgb(images):
     yuv = tf.stack([
-        image[..., 0],
-        image[..., 1] - 0.5,
-        image[..., 2] - 0.5
+        images[..., 0],
+        images[..., 1] - 0.5,
+        images[..., 2] - 0.5
     ], axis=-1)
     rgb = tf.image.yuv_to_rgb(yuv)
     return rgb

@@ -6,7 +6,7 @@ from keras.models import Model
 import tensorflow as tf
 
 from const import KERNEL_SIZE
-
+from noise import Crop, JpegCompression
 
 @keras.saving.register_keras_serializable(package="HiDDeN")
 class KExpandDims(keras.Layer):
@@ -79,20 +79,24 @@ class HIDDEN():
         self.encoder_model = Model(
             [input_images, input_messages], encoded_images, name="encoder")
 
-    # TODO: noise layer wants as input also the cover image in case of "Crop" noise.
     def _build_noise_layer_model(self, name):
         # Function that applies the noise layer to the image
         print("Building Noise Layer...")
-        input_images = Input(shape=self.image_shape, name="noise_input")
+
+        encoded_images = Input(shape=self.image_shape, name="noise_input_encoded")
+        cover_images = Input(shape=self.image_shape, name="noise_input_covers")
+
         if name == "identity":
-            x = Identity()(input_images)
-            self.noise_layer_model = Model(inputs=input_images, outputs=x, name="noise")
+            x = Identity()(encoded_images)
         elif name == "gaussian":
-            x = GaussianNoise(2)(input_images)
-            self.noise_layer_model = Model(inputs=input_images, outputs=x, name="noise")
+            x = GaussianNoise(2)(encoded_images)
         elif name == "dropout":
-            x = Dropout(0.3)(input_images)
-            self.noise_layer_model = Model(inputs=input_images, outputs=x, name="noise")
+            x = Dropout(0.3)(encoded_images)
+        elif name == "crop":
+            x = Crop(tf.sqrt(0.035))(encoded_images)
+        elif name == "jpeg":
+            x = JpegCompression()(encoded_images)
+        self.noise_layer_model = Model(inputs=[encoded_images, cover_images], outputs=x, name="noise")
 
     def _build_decoder_model(self):
         # Build the decoder
@@ -139,7 +143,7 @@ class HIDDEN():
         images = Input(shape=self.image_shape, name="input")
         messages = Input(shape=(self.message_length,), name="messages")
         encoder_output = self.encoder_model([images, messages])
-        noise_output = self.noise_layer_model(encoder_output)
+        noise_output = self.noise_layer_model([encoder_output, images])
         decoder_output = self.decoder_model(noise_output)
         discriminator_output = self.discriminator_model(encoder_output)
         # The final network: Encoder + Noise + Decoder + Adversary
