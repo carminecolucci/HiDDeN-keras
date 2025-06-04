@@ -6,6 +6,7 @@ from keras.models import Model
 import tensorflow as tf
 
 from const import KERNEL_SIZE
+from utils import round_message_to_string
 
 
 @keras.saving.register_keras_serializable(package="HiDDeN")
@@ -43,15 +44,28 @@ class HIDDEN():
         self._build_discriminator_model()
         self._build_and_compile_network(optimizer)
 
+    def __init__(self, model, height, width, channel, message_length):
+        self.message_length = message_length
+        self.H = height
+        self.W = width
+        self.C = channel
+        self.image_shape = (self.H, self.W, self.C)
+        self.network = keras.models.load_model(model)
+        self.encoder_model = self.network.layers[2]
+        self.noise_layer_model = self.network.layers[3]
+        self.decoder_model = self.network.layers[4]
+        self.discriminator_model = self.network.layers[5]
+
     def _build_encoder_model(self):
         # Build the encoder
         print("Building Encoder...")
         input_images = Input(shape=self.image_shape, name="encoder_input")
         input_messages = Input(shape=(self.message_length,), name="input_messages")
         # Phase 1
+        # The encoder convolves with a filter of dimension 3, and then three times with dimension 64
         x = input_images
         # Applying 4 Conv-BN-ReLU blocks with 64 output filters
-        for filters in [64, 64, 64, 64]:
+        for filters in [3, 64, 64, 64]:
             x = Conv2D(filters=filters, kernel_size=KERNEL_SIZE, strides=1, padding="same", use_bias=False)(x)
             x = BatchNormalization(-1)(x)
             x = Activation("relu")(x)
@@ -67,7 +81,7 @@ class HIDDEN():
         x2 = KConcat()([expanded_message, x, input_images], axis=-1)
 
         # Phase 3
-        # Latest Conv-BN-ReLU block with 64 output filters
+        # Latest Conv-BN-ReLU block with 64+3+30 output filters
         encoded_images = Conv2D(64, kernel_size=KERNEL_SIZE, strides=1, padding="same", use_bias=False)(x2)
         encoded_images = BatchNormalization(-1)(encoded_images)
         encoded_images = Activation("relu")(encoded_images)
@@ -176,6 +190,28 @@ class HIDDEN():
                 autoencoder_loss = self.network.train_on_batch([batch, batch_messages], [batch, batch_messages, real])
                 print(f"Autoencoder loss: {autoencoder_loss[0]}\tImage loss: {autoencoder_loss[1]}\t"
                       f"Message loss: {autoencoder_loss[2]}\tAdversary loss: {autoencoder_loss[3]}")
+
+    def predict(self, prediction_images, prediction_messages):
+        print("Starting Prediction")
+        decoded_img = []
+        original_msg = []
+        decoded_msg = []
+        x = prediction_images
+        for i, batch in enumerate(x):
+            print(f"Batch {i + 1}/{len(x)}")
+            batch_size = len(batch)
+            index = np.random.randint(0, len(x), batch_size)
+            pred_messages = prediction_messages[index]
+            imgs, msgs, _ = self.network.predict_on_batch([batch, pred_messages])
+            decoded_img.extend(imgs)
+            original_msg.extend(pred_messages)
+            decoded_msg.extend(msgs)
+
+        for i in range(len(decoded_msg)):
+            decoded_msg[i] = round_message_to_string(decoded_msg[i])
+            original_msg[i] = round_message_to_string(original_msg[i])
+        print(f"Accuracy: {np.sum(np.array(original_msg) == np.array(decoded_msg))}/{len(decoded_msg)}")
+        return decoded_img, decoded_msg
 
     def save(self, path):
         self.network.save(path)

@@ -15,7 +15,9 @@ if __name__ == "__main__":
     print(f"{N} images, {H} x {W} x {C}")
     print(f"Message length: {L}")
     # Create the network
-    network = HIDDEN(H, W, C, L, "adam")
+    # network = HIDDEN(H, W, C, L, "adam")
+    # Create the network
+    network = HIDDEN("HiDDeN_COCO2017.keras", H, W, C, L)
 
     # Train the network
     network.train(epochs, train_generator, messages)
